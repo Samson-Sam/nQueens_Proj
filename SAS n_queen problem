@@ -1,0 +1,103 @@
+%macro queen(n);
+/***** Set minimum n for queens problem ************/
+%if n <4 %then %do;
+%put Please enter a value larger than 3. The number you entered: &n.;
+%end;
+
+/***** Random place one queen on each horizontal row *******/
+data _Null_;
+
+%Line9999:;
+%do i=&n %to 1 %by -1;
+%let chess&i = %eval(%sysfunc(ceil(%sysfunc(ranuni(0))*&n)) + &n*(&i-1);
+%end;
+
+/***** Vertical check *****/
+
+%do v=&n %to 1 %by -1;
+	%do i=1 %to &n-1 ;
+		%do m=1 %to &n-1;
+		%if %eval(&&chess&v - &&chess&i)  = %eval(&n*(&n-&m))  
+			%then %do;
+			%goto Line9999;
+			%end;
+		%end;
+	%end;
+%end;
+
+/****************** Diagonal **************/
+%let i = &n;
+%let v = %eval(&n-1);
+%let m = 1;
+
+%do %while (%eval(&i-&v)=&m and &v > 0 and &m < &n);
+			%if %eval(&&chess&i- &&chess&v) = %eval(&n*&m+&m) or 
+				%eval(&&chess&i- &&chess&v) = %eval(&n*&m-&m) %then %do;
+				%goto Line9999;
+				%put &i;
+				%put &v;
+				%end;
+			
+			%let i = %eval(&i-1);
+			%let v = %eval(&v-1); 
+			
+			%if &v = 0 %then %do;
+			%let m = %eval(&m+1);
+			%let i = &n;
+			%let v = %eval(&n-&m);
+			%end;
+
+%end;
+run;
+
+/*********************************** Write out the location of chess */
+%do i=1 %to &n;
+%put	Chess&i = &&chess&i;
+%end;
+
+%do i=1 %to &n;
+%let remainder&i = %sysfunc(mod(&&chess&i,&n));
+%put 	Remainder of &&chess&i is &&remainder&i;
+%end;
+
+/******************************* Create the chessborad *******/
+data blank;
+length col1 - col&n 3.;
+%do _n_ =1 %to &n;
+output;
+%end;
+run;  
+
+/****************************** Place chess on the chessboard */
+data queen&n (drop=i);
+length Row_num 3 col: 3;
+Row_num = _n_;
+set blank;
+%do i=1 %to &n;
+col&i = 0;
+%end;
+
+%do i=1 %to &n;
+	%do v=1 %to &n;
+	if &v = &&remainder&i then col&v = &&chess&i;
+	%end;
+if &&remainder&i = 0 then col&n = &&chess&i;
+%end;
+
+do _n_ =1 to &n;
+	%do i=1 %to &n;
+		if Row_num*&n < col&i or col&i <= (Row_num-1)*&n then col&i=0;
+	%end;
+	
+end;
+
+array all[*] col1 -- col&n;
+do i=1 to &n;
+	if all[i] ne 0 then all[i]=1;
+end;
+run;
+
+proc print data=queen&n noobs; run;
+%mend queen;
+
+%queen(n=5);
